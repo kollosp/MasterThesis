@@ -4,9 +4,36 @@ https://docs.python.org/3/
 
 https://nodejs.org/en/docs/
 
-Spotkanie 21.12
+1. Przygotowanie modeli regresyjnych i interpolacyjnych oraz zmierzenie i porównanie skuteczności.
+2. Zastosowanie przytowanego modelu w przetwarzaniu strumieniowym (na żywo)
+
+Modele regresyjne scikit learn. 
+
+podejscie tabelaryczne
+Regresja liniowa i hubbera. (regresja wieloczynnikowa) (nie powinny działać!)
+Regresja najbliższego sąsiada ważona (ciągły odczyt)
+Regresja z wykorzystaniem drzew regresyjnych.
+
+Regresja z wykorzytanim sieci neuronowych. - docelowy regresor do zabawy
+	- wstęp do regresorów głębokich
+
+Przetwarzanie sygnałów wielowymiarowych. 	
+Wybór pracy, która opisuje wielosąsiedztwo (pojedyńcze, czterowspójne i osimiospójne sąsiedztwo)
+
+Merkator - projekcja kartograficzna polska-dolnyśląsk.
+
+Spis literatury. Krótki opis (2-3 zdania) celu i zakresu pracy.
+
+Spotkanie 21.12.21
 Przygotować:
 	- dane w formacie .npy (numpy macierze rozproszone)
 	- wykres gęstości rozkładu stacji telemetrycznych w przestrzeni
 	- model regresyjny
 	- model interpolacyjny
+
+Spotkanie 07.01.22
+
+Przygotować:
+	- przetworzenie danych numerycznych. 
+	- przygotowanie algorytmu testowego. Walidacja krzyżowa 5x2 (protokół pomiarowy)
+	- 
