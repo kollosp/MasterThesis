@@ -1,0 +1,12 @@
+https://softauthor.com/google-maps-api-draw-polyline/
+
+https://docs.python.org/3/
+
+https://nodejs.org/en/docs/
+
+Spotkanie 21.12
+Przygotować:
+	- dane w formacie .npy (numpy macierze rozproszone)
+	- wykres gęstości rozkładu stacji telemetrycznych w przestrzeni
+	- model regresyjny
+	- model interpolacyjny
