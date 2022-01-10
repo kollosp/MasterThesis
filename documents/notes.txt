@@ -1,7 +1,7 @@
 https://softauthor.com/google-maps-api-draw-polyline/
 
 https://docs.python.org/3/
-
+https://scikit-learn.org/
 https://nodejs.org/en/docs/
 
 1. Przygotowanie modeli regresyjnych i interpolacyjnych oraz zmierzenie i porównanie skuteczności.
