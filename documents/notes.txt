@@ -36,4 +36,15 @@ Spotkanie 07.01.22
 Przygotować:
 	- przetworzenie danych numerycznych. 
 	- przygotowanie algorytmu testowego. Walidacja krzyżowa 5x2 (protokół pomiarowy)
-	- 
+	
+Spotkanie 24.01.22
+
+Przygotowac:
+	Wprowadzić estymatory
+	- mlp 
+	- Random forest
+	- NN interpolator
+	- CART
+	- Random
+	- Lin interpolator
+	

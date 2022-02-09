@@ -1,19 +1,26 @@
 import matplotlib.pyplot as plt
 from sklearn.neighbors import KernelDensity
 import numpy as np
-from sklearn.metrics import r2_score
+from sklearn.metrics import r2_score, make_scorer
 import math
-from sklearn.model_selection import KFold
+from sklearn.model_selection import RepeatedKFold
 from sklearn.preprocessing import PolynomialFeatures
+
+
+
+from sklearn.model_selection import learning_curve
+from sklearn.model_selection import ShuffleSplit
+
 class Processing:
 
     @staticmethod
-    def processOne(X,y,methods,n_splits):
+    def processOne(X,y,methods,n_splits,n_repeats):
         # Procedura uczenia na zbiorze
-        results = np.zeros([len(methods), n_splits])
+
+        results = np.zeros([len(methods), n_repeats*n_splits])
 
         # repeted StratifiedKFold 5x2cv - zamiast tstudenta mozna zastosowac ftest
-        skf = KFold(n_splits, shuffle=False)
+        skf = RepeatedKFold(n_splits=n_splits, n_repeats=n_repeats, random_state=1234)
         fold_index = 0
 
         for train_index, test_index in skf.split(X, y):
@@ -36,13 +43,37 @@ class Processing:
 
 
     @staticmethod
-    def process(X,y, methods, n_splits=5):
-        results = np.zeros([len(y), len(methods), n_splits])
+    def process(X,y, methods, n_splits=5,n_repeats=4):
+        results = np.zeros([len(y), len(methods), n_splits*n_repeats])
 
         for index in range(len(y)):
-            results[index] = Processing().processOne(X[index], y[index], methods, n_splits=n_splits)
+            results[index] = Processing().processOne(X[index], y[index], methods, n_splits=n_splits,n_repeats=n_repeats)
 
         return results
 
 
+    @staticmethod
+    def processMLP(X,y,estimator,train_sizes, n_splits=5,n_repeats=10):
 
+        train_sizes, train_scores, test_scores, fit_times, _ = learning_curve(
+            estimator,
+            X,
+            y,
+            cv=RepeatedKFold(n_splits=n_splits, n_repeats=n_repeats, random_state=1234),
+            n_jobs=4,
+            train_sizes=train_sizes,
+            return_times=True,
+            scoring=make_scorer(r2_score),
+            #exploit_incremental_learning = True
+        )
+
+        train_scores_mean = np.mean(train_scores, axis=1)
+        train_scores_std = np.std(train_scores, axis=1)
+        test_scores_mean = np.mean(test_scores, axis=1)
+        test_scores_std = np.std(test_scores, axis=1)
+        fit_times_mean = np.mean(fit_times, axis=1)
+        fit_times_std = np.std(fit_times, axis=1)
+
+        return train_scores_mean, train_scores_std, test_scores_mean, test_scores_std, fit_times_mean,fit_times_std
+
+        pass

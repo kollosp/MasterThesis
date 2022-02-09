@@ -1,7 +1,26 @@
 import numpy as np
 from scipy import stats
 
+
+from sklearn.feature_selection import f_regression
+
 class Postprocessing:
+
+    @staticmethod
+    def print_results(results):
+        print(results)
+
+
+    @staticmethod
+    def stats(data):
+        d = np.zeros([data.shape[0], data.shape[1], 2])
+        for i in range(len(data)):
+            for j in range(len(data[i])):
+                d[i,j,0] = np.mean(data[i,j])
+                d[i,j,1] = np.std(data[i,j])
+
+        return d
+
     @staticmethod
     def process(data):
         d = np.zeros([5, data.shape[1], data.shape[1]])
@@ -13,6 +32,9 @@ class Postprocessing:
             ##NxN table
             for k1 in range(len(data[i])):
                 for k2 in range(len(data[i])):
+                    #f test
+                    #s = f_regression(data[i, k1], data[i, k2])
+                    #t-student test
                     s = stats.ttest_ind(data[i, k1], data[i, k2])
                     # sprawdzeie jak bardzo rozklady dwoch zmiennych losowych sa od siebie odlegle
                     d[0, k1, k2] = s.statistic
