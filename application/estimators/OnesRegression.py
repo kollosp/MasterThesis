@@ -14,3 +14,6 @@ class OnesRegression:
 
     def __str__(self):
         return "Always Ones"
+
+    def get_params(self, deep=True):
+        return {}

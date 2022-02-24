@@ -2,7 +2,6 @@ from FileLoader import *
 from ChartManager import *
 from Processing import *
 from Postprocessing import *
-from Postprocessing import *
 from estimators.RandomRegression import RandomRegression
 from estimators.GravityRegression import GravityRegression
 from estimators.OnesRegression import OnesRegression
@@ -20,6 +19,7 @@ from sklearn.linear_model import Ridge
 from sklearn.pipeline import Pipeline
 from sklearn.linear_model import LinearRegression
 
+from estimators.PyTorchSkLearnFit import PytorchRegressor
 
 import matplotlib.pyplot as plt
 from scipy.stats import kde
@@ -98,20 +98,24 @@ def run(estimators, iterations=1):
         cm.pause(0.05)
     cm.show_plots()
 
-def runMPL(estimators, iterations=1):
+def runMPL(estimators, iterations=1, train_sizes= np.linspace(0.1, 1.0, 5)):
 
     for i in range(iterations):
         processed_data_piece = data[1:,2080 + i*20]
         n_splits = 5
 
+        train_scores_means = np.zeros([len(estimators), len(train_sizes)])
+        test_scores_means = np.zeros([len(estimators), len(train_sizes)])
+
         for j in range(len(estimators)):
-            train_sizes = np.linspace(0.1, 1.0, 5)
+
             train_scores_mean, train_scores_std, test_scores_mean, test_scores_std, fit_times_mean, fit_times_std = \
                 Processing().processMLP(location, processed_data_piece, estimators[j], train_sizes=train_sizes, n_splits=n_splits)
-            cm.plot_learning_curve(train_scores_mean, train_scores_std, test_scores_mean, test_scores_std, fit_times_mean,fit_times_std, train_sizes)
-            cm.pause(0.05)
+            train_scores_means[j] = train_scores_mean
+            test_scores_means[j] = test_scores_mean
 
-
+        cm.plot_learning_curve(estimators, train_scores_means, test_scores_means, train_sizes)
+        cm.pause(0.05)
 
         #cm.plot(location, solar_intensity=processed_data_piece, estimators=estimators, res_stats=res_stats, n_splits=n_splits, adaptive_colors=True)
         #cm.plot_input_data_distribution(np.array([
@@ -119,6 +123,10 @@ def runMPL(estimators, iterations=1):
         #],dtype=object))
 
     cm.show_plots()
+
+
+
+
 
 def main():
     estimators1 = [
@@ -163,6 +171,8 @@ def main():
         MLPRegressor(hidden_layer_sizes=(10,10),
                      max_iter=3000, activation='logistic',
                      solver='lbfgs', random_state=5),
+        PytorchRegressor(output_dim=1, input_dim=2, num_epochs=3000, hidden_layer_dims=[10, 10], verbose=0),
+
         #MLPRegressor(hidden_layer_sizes=(20,20,20),
         #             max_iter=3000, activation='tanh',
         #             solver='lbfgs', random_state=5),
@@ -184,8 +194,8 @@ def main():
     #run(gravity, iterations=1)
     #run(mlp, iterations=1)
     #stream(estimators1, locations_count=4)
-    stream(g, locations_count=4)
-    #runMPL(mlp)
+    #stream(g, locations_count=4)
+    runMPL(mlp, train_sizes = np.linspace(0.1, 1.0, 25))
 
 if __name__ == '__main__':
     # execute only if run as the entry point into the program

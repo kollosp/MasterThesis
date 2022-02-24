@@ -24,8 +24,6 @@ class ChartManager:
 
     nbins = 100
 
-
-
     def __init__(self,north=None, south=None, west = None, east=None, path="./pl_map_2.png", img_north=55, img_south=48.9, img_west=14, img_east=24.132):
         self.img = plt.imread(path)
         self.north = img_north
@@ -67,7 +65,7 @@ class ChartManager:
               math.floor(shape[1] * x_min): math.floor(shape[1] * x_max),
         ]
 
-        print(y_min, y_max,x_min, x_max, self.extent)
+        #print(y_min, y_max,x_min, x_max, self.extent)
 
     def plot_input_data_distribution(self, data):
         col_count = 5
@@ -241,65 +239,22 @@ class ChartManager:
         ax[0].legend()
 
 
-    def plot_learning_curve(self, train_scores_mean, train_scores_std, test_scores_mean, test_scores_std, fit_times_mean,fit_times_std, train_sizes):
+    def plot_learning_curve(self, estimators, train_scores_means, test_scores_means, train_sizes):
 
-        fig, axes = plt.subplots(3)
+        fig, axes = plt.subplots(len(estimators))
 
-        # Plot learning curve
-        axes[0].grid()
-        '''
-        axes[0].fill_between(
-            train_sizes,
-            train_scores_mean - train_scores_std,
-            train_scores_mean + train_scores_std,
-            alpha=0.1,
-            color="r",
-        )
-        axes[0].fill_between(
-            train_sizes,
-            test_scores_mean - test_scores_std,
-            test_scores_mean + test_scores_std,
-            alpha=0.1,
-            color="g",
-        )'''
-        axes[0].plot(
-            train_sizes, train_scores_mean, "o-", color="r", label="Training score"
-        )
 
-        axes[0].plot(
-            train_sizes, test_scores_mean, "o-", color="g", label="Cross-validation score"
-        )
-        axes[0].legend(loc="best")
+        for i, estimator in enumerate(estimators):
+            # Plot learning curve
+            axes[i].grid()
+            axes[i].plot(
+                train_sizes, train_scores_means[i], "o-", color="r", label="Training score"
+            )
+            axes[i].plot(
+                train_sizes, test_scores_means[i], "o-", color="g", label="Cross-validation score"
+            )
 
         # Plot n_samples vs fit_times
-        axes[1].grid()
-        axes[1].plot(train_sizes, fit_times_mean, "o-")
-        '''axes[1].fill_between(
-            train_sizes,
-            fit_times_mean - fit_times_std,
-            fit_times_mean + fit_times_std,
-            alpha=0.1,
-        )'''
-        axes[1].set_xlabel("Training examples")
-        axes[1].set_ylabel("fit_times")
-        axes[1].set_title("Scalability of the model")
-
-        # Plot fit_time vs score
-        fit_time_argsort = fit_times_mean.argsort()
-        fit_time_sorted = fit_times_mean[fit_time_argsort]
-        test_scores_mean_sorted = test_scores_mean[fit_time_argsort]
-        test_scores_std_sorted = test_scores_std[fit_time_argsort]
-        axes[2].grid()
-        axes[2].plot(fit_time_sorted, test_scores_mean_sorted, "o-")
-        '''axes[2].fill_between(
-            fit_time_sorted,
-            test_scores_mean_sorted - test_scores_std_sorted,
-            test_scores_mean_sorted + test_scores_std_sorted,
-            alpha=0.1,
-        )'''
-        axes[2].set_xlabel("fit_times")
-        axes[2].set_ylabel("Score")
-        axes[2].set_title("Performance of the model")
 
     def show_plots(self):
         plt.show()

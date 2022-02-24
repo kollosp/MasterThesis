@@ -15,3 +15,6 @@ class NNInterpolation:
 
     def __str__(self):
         return "Nearest neighbour"
+
+    def get_params(self, deep=True):
+        return {}

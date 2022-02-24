@@ -14,3 +14,6 @@ class ZeroRegression:
 
     def __str__(self):
         return "Always Zeros"
+
+    def get_params(self, deep=True):
+        return {}

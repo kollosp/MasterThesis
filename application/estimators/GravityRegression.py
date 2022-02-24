@@ -14,6 +14,13 @@ class GravityRegression:
 
         return
 
+    def get_params(self, deep=True):
+        return {
+            "gaussian_bandwidth": self.gaussian_bandwidth,
+            "func": self.func,
+            "bandwidth": self.bandwidth
+        }
+
     def euclidean_distance(self, x1,x2):
         # euclidean distance of the given point and all datasets calculation
         return ((x2-x1)**2).sum()

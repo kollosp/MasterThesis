@@ -13,3 +13,6 @@ class RandomRegression:
 
     def __str__(self):
         return "Random"
+
+    def get_params(self, deep=True):
+        return {}
