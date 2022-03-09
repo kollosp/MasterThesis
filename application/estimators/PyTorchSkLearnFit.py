@@ -110,7 +110,7 @@ class PytorchRegressor(BaseEstimator, RegressorMixin):
                     finish = True
                     break
 
-    def fit(self, X, y):
+    def fit(self, X, y, sample_weight=None):
         """
         Trains the pytorch regressor.
         """

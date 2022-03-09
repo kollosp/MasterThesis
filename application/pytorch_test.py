@@ -72,7 +72,9 @@ if __name__ == '__main__':
     n_repeats = 1
     spaces = np.linspace(0.1, 1, 25)
 
+    print(spaces)
     methods = np.array([
+        PytorchRegressor(output_dim=1, input_dim=2, num_epochs=1000, hidden_layer_dims=[10,10], verbose=0),
         PytorchRegressor(output_dim=1, input_dim=2, num_epochs=200, hidden_layer_dims=[10,10], verbose=0),
         PytorchRegressor(output_dim=1, input_dim=2, num_epochs=50, hidden_layer_dims=[10, 10], verbose=0)
     ])
@@ -93,8 +95,8 @@ if __name__ == '__main__':
     fig, ax = plt.subplots(len(methods))
 
     for i in range(len(methods)):
-        ax[i].plot(result[i,:,0])
-        ax[i].plot(result[i,:,1])
+        ax[i].plot(spaces, result[i,:,0])
+        ax[i].plot(spaces, result[i,:,1])
 
 
     plt.show()

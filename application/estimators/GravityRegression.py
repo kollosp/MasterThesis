@@ -25,7 +25,7 @@ class GravityRegression:
         # euclidean distance of the given point and all datasets calculation
         return ((x2-x1)**2).sum()
 
-    def fit(self, X,y):
+    def fit(self, X,y, sample_weight=None):
         self.data_set = X
         self.data_values = y
         #normalisation

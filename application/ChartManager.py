@@ -2,7 +2,9 @@ import matplotlib.pyplot as plt
 from sklearn.neighbors import KernelDensity
 import numpy as np
 import math
+import sys
 import datetime
+from sklearn.preprocessing import normalize
 
 class ChartManager:
     north = 55
@@ -81,7 +83,7 @@ class ChartManager:
     def plot(self, points, solar_intensity, estimators, n_splits, adaptive_colors=True, res_stats=None):
         # Evaluate a gaussian kde on a regular grid of nbins x nbins over data extents
 
-        kde = KernelDensity(bandwidth=0.08*np.min([self.sub_north - self.sub_south, self.sub_east-self.sub_west]),metric="euclidean",  kernel="cosine", algorithm="ball_tree").fit(points)
+        kde = KernelDensity(bandwidth=0.08*np.min([self.sub_north - self.sub_south, self.sub_east-self.sub_west]),metric="euclidean",  kernel="cosine").fit(points)
         #k = kde.gaussian_kde([points[:,0], points[:,1]])
         #addaptive version
         #xi, yi = np.mgrid[x.min():x.max():nbins * 1j, y.min():y.max():nbins * 1j]
@@ -95,6 +97,12 @@ class ChartManager:
         xi_delta = xi_max - xi_min
         yi_delta = yi_max - yi_min
         zi = kde.score_samples(np.hstack([np.array([xi.flatten()]).T, np.array([yi.flatten()]).T]))
+        #zi contains -inf values. np.exp replace them with 0 (some kind of rescale)
+        #zi = np.exp(zi)
+
+        #np.set_printoptions(threshold=sys.maxsize)
+        #print(zi)
+        #print(np.array([x if x is not float('-inf') for x in zi]))
         #print(np.hstack([xi.flatten(),yi.flatten()]))
 
         fig, ax = plt.subplots(1+math.ceil(len(estimators)/3),3)
@@ -220,14 +228,13 @@ class ChartManager:
         #predictions[0] - location
         #predictions[1] - estimator
         #predictions[2] - point in time
-        fig, ax = plt.subplots(predictions.shape[0])
+        fig, ax = plt.subplots(predictions.shape[0]+1)
 
-        print(locations)
         for i in range(locations.shape[0]):
             ax[i].title.set_text("lat: " + ("%.3f" % locations[i,0]) + " long: " + ("%.3f" % locations[i, 1]))
 
         for i in range(reference_data.shape[0]):
-            ax[i].plot(x, reference_data[i],'go-', markersize=2, label='Reference')
+            ax[i].plot(x, reference_data[i],'ro-', markersize=2, label='Reference')
 
         for i in range(predictions.shape[0]):
             for j in range(predictions.shape[1]):
@@ -237,7 +244,6 @@ class ChartManager:
                     ax[i].plot(x, predictions[i, j], markersize=2, marker='o')
 
         ax[0].legend()
-
 
     def plot_learning_curve(self, estimators, train_scores_means, test_scores_means, train_sizes):
 

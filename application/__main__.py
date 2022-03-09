@@ -4,6 +4,7 @@ from Processing import *
 from Postprocessing import *
 from estimators.RandomRegression import RandomRegression
 from estimators.GravityRegression import GravityRegression
+from estimators.MeanRegression import MeanRegression
 from estimators.OnesRegression import OnesRegression
 from estimators.ZeroRegression import ZeroRegression
 from estimators.LinearInterpolation import LinearInterpolation
@@ -11,6 +12,7 @@ from estimators.NNInterpolation import NNInterpolation
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.tree import DecisionTreeRegressor
 from sklearn.neural_network import MLPRegressor
+from sklearn.neighbors import KernelDensity
 
 from sklearn.naive_bayes import GaussianNB
 from sklearn.pipeline import make_pipeline
@@ -19,6 +21,7 @@ from sklearn.linear_model import Ridge
 from sklearn.pipeline import Pipeline
 from sklearn.linear_model import LinearRegression
 
+from sklearn.metrics import r2_score, make_scorer
 from estimators.PyTorchSkLearnFit import PytorchRegressor
 
 import matplotlib.pyplot as plt
@@ -42,10 +45,11 @@ cm = ChartManager(west=west, east=east, south=south, north=north, path=path, img
                   img_south=img_south, img_north=img_north)
 
 
+
 def stream(estimators, locations_count):
     locations = location[locations_count:]
     samples = data[locations_count+1:, 2000:2300:2]
-    reference_locations = location[0:locations_count]
+    reference_locations = location[7:locations_count+7]
     reference_data = data[1:locations_count+1, 2000:2300:2]
 
     predictions = np.zeros([len(reference_locations), len(estimators), samples.shape[1]])
@@ -69,12 +73,12 @@ def stream(estimators, locations_count):
     #plot sub step
 
 
-def run(estimators, iterations=1):
 
+def run(estimators, iterations=1):
     for i in range(iterations):
         processed_data_piece = data[1:,2080 + i*20]
         n_splits = 5
-        results = Processing().process(np.array([location]), np.array([processed_data_piece]), estimators, n_splits=n_splits)
+        results = Processing().process(np.array([location]), np.array([processed_data_piece]), estimators, n_splits=n_splits, en_weights = False)
 
         #[0] -> because only one dataset
         res_stats = Postprocessing().stats(results)[0]
@@ -124,24 +128,82 @@ def runMPL(estimators, iterations=1, train_sizes= np.linspace(0.1, 1.0, 5)):
 
     cm.show_plots()
 
+#start = 2040, start = 180
+def test_then_train(estimators, estimator_count=0, chunks=100, step=1, chunk_size=3, start = 1050, en_weights=False):
+
+    ev_plus = np.zeros((len(estimators), chunks))
+    #memory for each prediction
+    predictions = np.zeros((len(location), len(estimators), chunks))
+    stop = start + chunks
+    fitted = False
+    for i in range(start,stop,step):
+        for j, estimator in enumerate(estimators):
+
+            if fitted:
+                # predict future in known points
+                pred_x = location
+                if chunk_size > 1:
+                    pred_x = np.append(location, np.full((len(location), 1), 1), axis=1)
+                pred = estimators[j].predict(pred_x)
+                evaluation = r2_score(data[1:, i], pred)
+                ev_plus[j, int((i - start) / step)] = evaluation
+                predictions[:, j, int((i - start) / step)] = pred
+
+            density = None
+            if en_weights:
+                kde = KernelDensity(bandwidth=0.08 * np.min(
+                    [location[:, 0].max() - location[:, 0].min(), location[:, 1].max() - location[:, 1].min()]),
+                                    metric="euclidean", kernel="gaussian", algorithm="ball_tree").fit(location)
+                density = 1/np.exp(kde.score_samples(location))
 
 
+            if chunk_size > 1:
+                #fit each estimator
+                fit_data_x = np.zeros([chunk_size*len(location),3])
+                fit_data_y = np.zeros([chunk_size*len(location)])
+                for k in range(chunk_size):
+                    fit_data_x[k*len(location):(k+1)*len(location), 0:2] = location
+                    fit_data_x[k*len(location):(k+1)*len(location), 2] = k-chunk_size+1
+                    fit_data_y[k*len(location):(k+1)*len(location)] = data[1:, i + (k-chunk_size+1)*step]
+
+                estimators[j].fit(fit_data_x,fit_data_y, density)
+            else:
+                estimators[j].fit(location, data[1:, i], density)
+
+        fitted = True
+
+    for i, _ in enumerate(estimators):
+        print( "{0}: +1: R^2={1:.3f}({2:.3f})".format(estimators[i], ev_plus[i].mean(), ev_plus[i].std()))
+
+    cm.plot_in_time(x=np.array(range(start,stop,step)),locations=location[4:6],predictions=predictions[4:6,:,:],
+                    reference_data=data[4:6, start:stop:step],estimators=estimators)
+    cm.pause(0.05)
+    cm.show_plots()
 
 
 def main():
+    estimators2 = [
+        LinearRegression(),
+        MeanRegression(),
+        DecisionTreeRegressor(random_state=0),
+        GravityRegression(func="exponential", gaussian_bandwidth=4),
+        PytorchRegressor(output_dim=1, input_dim=3, num_epochs=200, hidden_layer_dims=[10, 10], verbose=0),
+    ]
+
     estimators1 = [
         LinearRegression(),
         RandomRegression(),
         NNInterpolation(),
         LinearInterpolation(),
         RandomForestRegressor(),
+        MeanRegression(),
         # A Classification and Regression Tree(CART)
         DecisionTreeRegressor(random_state=0),
         GravityRegression(func="exponential", gaussian_bandwidth=4),
         GravityRegression(func="homographic", gaussian_bandwidth=2),
-        MLPRegressor(hidden_layer_sizes=(10, 10, 10),
-                     max_iter=300000, activation='tanh',
-                     solver='lbfgs', random_state=5),
+        #MLPRegressor(hidden_layer_sizes=(10, 10, 10),
+        #             max_iter=300000, activation='tanh',
+        #             solver='lbfgs', random_state=5),
     ]
 
     gravity = [
@@ -193,9 +255,11 @@ def main():
     #run(estimators1, iterations=1)
     #run(gravity, iterations=1)
     #run(mlp, iterations=1)
-    #stream(estimators1, locations_count=4)
     #stream(g, locations_count=4)
-    runMPL(mlp, train_sizes = np.linspace(0.1, 1.0, 25))
+    #stream(g, locations_count=4)
+    #runMPL(mlp, train_sizes = np.linspace(0.1, 1.0, 25))
+
+    test_then_train(estimators2)
 
 if __name__ == '__main__':
     # execute only if run as the entry point into the program

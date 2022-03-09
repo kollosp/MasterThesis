@@ -5,7 +5,7 @@ class OnesRegression:
     def __init__(self):
         return
 
-    def fit(self, X,y):
+    def fit(self, X,y, sample_weight=None):
         return
 
     def predict(self, X):

@@ -14,7 +14,7 @@ from sklearn.model_selection import ShuffleSplit
 class Processing:
 
     @staticmethod
-    def processOne(X,y,methods,n_splits,n_repeats):
+    def processOne(X,y,methods,n_splits,n_repeats, en_weights=True):
         # Procedura uczenia na zbiorze
 
         results = np.zeros([len(methods), n_repeats*n_splits])
@@ -27,12 +27,19 @@ class Processing:
             X_train, X_test = X[train_index], X[test_index]
             y_train, y_test = y[train_index], y[test_index]
 
+            density = None
+            if en_weights:
+                kde = KernelDensity(bandwidth=0.08 * np.min([X_train[:, 0].max() - X_train[:, 0].min(), X_train[:, 1].max()-X_train[:, 1].min()]),
+                                    metric="euclidean", kernel="gaussian", algorithm="ball_tree").fit(X_train)
+                density = np.exp(kde.score_samples(X_train))
+
+
             #5x1 cross validation
             #print(X_train.shape, X_test.shape)
 
             for clf_index in range(len(methods)):
                 #print(clf_index,methods[clf_index])
-                methods[clf_index].fit(X_train, y_train)
+                methods[clf_index].fit(X_train, y_train, density)
                 #evaluate interpolation
                 y_pred = methods[clf_index].predict(X_test)
                 results[clf_index, fold_index] = r2_score(y_test, y_pred)
@@ -43,11 +50,11 @@ class Processing:
 
 
     @staticmethod
-    def process(X,y, methods, n_splits=5,n_repeats=4):
+    def process(X,y, methods, n_splits=5,n_repeats=4, en_weights=True):
         results = np.zeros([len(y), len(methods), n_splits*n_repeats])
 
         for index in range(len(y)):
-            results[index] = Processing().processOne(X[index], y[index], methods, n_splits=n_splits,n_repeats=n_repeats)
+            results[index] = Processing().processOne(X[index], y[index], methods, n_splits=n_splits,n_repeats=n_repeats, en_weights=en_weights)
 
         return results
 

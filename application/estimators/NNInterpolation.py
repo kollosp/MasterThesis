@@ -5,7 +5,7 @@ class NNInterpolation:
     def __init__(self):
         return
 
-    def fit(self, X, y):
+    def fit(self, X, y, sample_weight=None):
         #calc distance matrix
         self.f = interpolate.NearestNDInterpolator(X, y)
         return

@@ -57,7 +57,7 @@ class PyTorchMLP():
             self.optimizer = optimizer
 
 
-    def fit(self, X,y):
+    def fit(self, X,y, sample_weight=None):
         X = torch.tensor(X)
         y = torch.tensor(y)
         epochs = 5
