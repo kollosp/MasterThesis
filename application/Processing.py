@@ -12,49 +12,42 @@ from sklearn.model_selection import learning_curve
 from sklearn.model_selection import ShuffleSplit
 
 class Processing:
-
     @staticmethod
-    def processOne(X,y,methods,n_splits,n_repeats, en_weights=True):
-        # Procedura uczenia na zbiorze
-
-        results = np.zeros([len(methods), n_repeats*n_splits])
+    def process(X,y, methods, n_splits=5,n_repeats=4, chart_verbose=True):
+        results = np.zeros([len(methods), n_repeats * n_splits])
 
         # repeted StratifiedKFold 5x2cv - zamiast tstudenta mozna zastosowac ftest
         skf = RepeatedKFold(n_splits=n_splits, n_repeats=n_repeats, random_state=1234)
         fold_index = 0
 
+        fig, ax = None, None
+        if chart_verbose is True:
+            fig, ax = plt.subplots(len(methods), n_repeats * n_splits + 2)
+
+
         for train_index, test_index in skf.split(X, y):
             X_train, X_test = X[train_index], X[test_index]
             y_train, y_test = y[train_index], y[test_index]
 
-            density = None
-            if en_weights:
-                kde = KernelDensity(bandwidth=0.08 * np.min([X_train[:, 0].max() - X_train[:, 0].min(), X_train[:, 1].max()-X_train[:, 1].min()]),
-                                    metric="euclidean", kernel="gaussian", algorithm="ball_tree").fit(X_train)
-                density = np.exp(kde.score_samples(X_train))
-
-
-            #5x1 cross validation
-            #print(X_train.shape, X_test.shape)
-
+            # 5x1 cross validation
             for clf_index in range(len(methods)):
-                #print(clf_index,methods[clf_index])
-                methods[clf_index].fit(X_train, y_train, density)
-                #evaluate interpolation
+                # print(clf_index,methods[clf_index])
+                methods[clf_index].fit(X_train, y_train)
+                # evaluate interpolation
                 y_pred = methods[clf_index].predict(X_test)
                 results[clf_index, fold_index] = r2_score(y_test, y_pred)
+                print("---")
+                print(y_test)
+                print(y_pred)
+                print(results[clf_index, fold_index])
+
+                if chart_verbose is True:
+                    ax[clf_index, fold_index].scatter(X_train[:, 1], X_train[:, 0], c=y_train)
 
             fold_index += 1
 
-        return results
-
-
-    @staticmethod
-    def process(X,y, methods, n_splits=5,n_repeats=4, en_weights=True):
-        results = np.zeros([len(y), len(methods), n_splits*n_repeats])
-
-        for index in range(len(y)):
-            results[index] = Processing().processOne(X[index], y[index], methods, n_splits=n_splits,n_repeats=n_repeats, en_weights=en_weights)
+        if chart_verbose is True:
+            plt.show()
 
         return results
 

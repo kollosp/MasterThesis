@@ -13,7 +13,8 @@ from sklearn.ensemble import RandomForestRegressor
 from sklearn.tree import DecisionTreeRegressor
 from sklearn.neural_network import MLPRegressor
 from sklearn.neighbors import KernelDensity
-
+from sklearn.ensemble import BaggingRegressor
+from Normalization import Normalization
 from sklearn.naive_bayes import GaussianNB
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import PolynomialFeatures
@@ -35,14 +36,16 @@ wroclaw =       (16.831,17.4,51,51.2,"wroclaw_map.png",16.831,17.4,51,51.2)
 cover_monitors =(14,19.5,49,54,"pl_map_2.png",14,   24.132,48.9,55)
 
 #select the range of area under consideration
-selected_range = cover_monitors
+selected_range = lower_silesia
 
 # load data
 headers, location, data = FileLoader().load_from_csv("./data/07-10Dane.csv")
 
 west, east, south, north, path, img_west, img_east, img_south, img_north = selected_range
-cm = ChartManager(west=west, east=east, south=south, north=north, path=path, img_west=img_west, img_east=img_east,
-                  img_south=img_south, img_north=img_north)
+#cm = ChartManager(west=west, east=east, south=south, north=north, path=path, img_west=img_west, img_east=img_east,
+#                  img_south=img_south, img_north=img_north)
+cm = ChartManager(west=0, east=1, south=0, north=1, path=path, img_west=0, img_east=1,
+                  img_south=0, img_north=1)
 
 
 
@@ -72,37 +75,34 @@ def stream(estimators, locations_count):
 
     #plot sub step
 
-
-
 def run(estimators, iterations=1):
-    for i in range(iterations):
-        processed_data_piece = data[1:,2080 + i*20]
-        n_splits = 5
-        results = Processing().process(np.array([location]), np.array([processed_data_piece]), estimators, n_splits=n_splits, en_weights = False)
+    chart_verbose = False
+    norm_location, norm_data = Normalization.filtering(location, data[1:, 2080], west=west, east=east, south=south, north=north)
+    norm_location, norm_data = Normalization.normalize(norm_location, norm_data, (40,40), chart_manager=ChartManager)
 
-        #[0] -> because only one dataset
-        res_stats = Postprocessing().stats(results)[0]
+    n_splits = 5
+    #results = Processing().process(location, data[1:, 2080], estimators, n_splits=n_splits)
+    results = Processing().process(norm_location, norm_data, estimators, n_splits=n_splits, chart_verbose=chart_verbose)
 
-        for estimator in estimators:
-            estimator.fit(location,processed_data_piece)
+    #[0] -> because only one dataset
+    res_stats = Postprocessing().stats(np.array([results]))[0]
 
-        print("==== Results ====")
-        np.set_printoptions(suppress=True, precision=3)
-        print(results)
-        print("==== Results stats ====")
-        print(res_stats)
-        print("==== Results analysis ====")
-        print(Postprocessing().process(results))
+    for estimator in estimators:
+        estimator.fit(norm_location,norm_data)
+
+    print("==== Results ====")
+    np.set_printoptions(suppress=True, precision=3)
+    print(results)
+    print("==== Results stats ====")
+    print(res_stats)
+    print("==== Results analysis ====")
+    print(Postprocessing().process(results))
 
 
-        cm.plot(location, solar_intensity=processed_data_piece, estimators=estimators, res_stats=res_stats, n_splits=n_splits, adaptive_colors=True)
-        #cm.plot_input_data_distribution(np.array([
-        #    (data[0, i], data[1:, i]) for i in range(2000,2200) if i%10==0
-        #],dtype=object))
-        cm.pause(0.05)
+    cm.plot(norm_location, solar_intensity=norm_data, estimators=estimators, res_stats=res_stats, n_splits=n_splits, adaptive_colors=True)
     cm.show_plots()
 
-def runMPL(estimators, iterations=1, train_sizes= np.linspace(0.1, 1.0, 5)):
+def learning_curves(estimators, iterations=1, train_sizes= np.linspace(0.1, 1.0, 10)):
 
     for i in range(iterations):
         processed_data_piece = data[1:,2080 + i*20]
@@ -129,7 +129,7 @@ def runMPL(estimators, iterations=1, train_sizes= np.linspace(0.1, 1.0, 5)):
     cm.show_plots()
 
 #start = 2040, start = 180
-def test_then_train(estimators, estimator_count=0, chunks=100, step=1, chunk_size=3, start = 1050, en_weights=False):
+def test_then_train(estimators, estimator_count=0, chunks=300, step=1, chunk_size=3, start = 1050, en_weights=False):
 
     ev_plus = np.zeros((len(estimators), chunks))
     #memory for each prediction
@@ -182,12 +182,31 @@ def test_then_train(estimators, estimator_count=0, chunks=100, step=1, chunk_siz
 
 
 def main():
+
+
+
     estimators2 = [
         LinearRegression(),
         MeanRegression(),
         DecisionTreeRegressor(random_state=0),
         GravityRegression(func="exponential", gaussian_bandwidth=4),
-        PytorchRegressor(output_dim=1, input_dim=3, num_epochs=200, hidden_layer_dims=[10, 10], verbose=0),
+        #PytorchRegressor(output_dim=1, input_dim=3, num_epochs=200, hidden_layer_dims=[10, 10], verbose=0),
+    ]
+
+    #Obserwacje:
+    # modele drzew o glebokosci wiekszej niz 3 sa przetrenowane (pradopodobnie przez rozklad danych wejsciowch)
+    # Drzewa niestety nie rozwiazuja problu lepiej niz regresor sredni. Lasy zgodnie z przypuszczeniami generuja mniejsza
+    # warinacje od pojedynczych drzew decyzyjnych
+    trees = [
+        MeanRegression(),
+        DecisionTreeRegressor(random_state=1041, max_depth=3),
+        DecisionTreeRegressor(random_state=1041, max_depth=2),
+        RandomForestRegressor(random_state=1041, max_depth=3,n_estimators=200),
+        RandomForestRegressor(random_state=1041, max_depth=3,n_estimators=100),
+        RandomForestRegressor(random_state=1041, max_depth=3,n_estimators=1000),
+        RandomForestRegressor(random_state=1041, max_depth=2,n_estimators=200),
+        RandomForestRegressor(random_state=1041, max_depth=2,n_estimators=100),
+        RandomForestRegressor(random_state=1041, max_depth=2,n_estimators=1000),
     ]
 
     estimators1 = [
@@ -195,10 +214,10 @@ def main():
         RandomRegression(),
         NNInterpolation(),
         LinearInterpolation(),
-        RandomForestRegressor(),
+        RandomForestRegressor(max_depth=3),
         MeanRegression(),
         # A Classification and Regression Tree(CART)
-        DecisionTreeRegressor(random_state=0),
+        DecisionTreeRegressor(random_state=0, max_depth=3),
         GravityRegression(func="exponential", gaussian_bandwidth=4),
         GravityRegression(func="homographic", gaussian_bandwidth=2),
         #MLPRegressor(hidden_layer_sizes=(10, 10, 10),
@@ -206,16 +225,19 @@ def main():
         #             solver='lbfgs', random_state=5),
     ]
 
+
+    #obserwacje bagging dziala jak powinien zmniejszajac wariancje ale oslabiajac dokladnosc. Gaussian_bandwidth najlepiej ustawic
+    #na 2 lub 4. Bez znaczenia jakie jadro zostanie wykorzystane do predykcji.
     gravity = [
-        GravityRegression(func="homographic", gaussian_bandwidth=1),
-        GravityRegression(func="homographic", gaussian_bandwidth=2),
+        MeanRegression(),
         GravityRegression(func="homographic", gaussian_bandwidth=4),
-        GravityRegression(func="exponential", gaussian_bandwidth=1),
-        GravityRegression(func="exponential", gaussian_bandwidth=2),
         GravityRegression(func="exponential", gaussian_bandwidth=4),
-        GravityRegression(bandwidth=0.6),
-        GravityRegression(bandwidth=0.8),
-        GravityRegression(bandwidth=1),
+        BaggingRegressor(base_estimator=GravityRegression(func="homographic",gaussian_bandwidth=4), n_estimators=20),
+        BaggingRegressor(base_estimator=GravityRegression(func="exponential",gaussian_bandwidth=4), n_estimators=20),
+
+        MLPRegressor(hidden_layer_sizes=(10, 10),
+                     max_iter=3000, activation='logistic',
+                     solver='lbfgs', random_state=5),
     ]
 
     g = [
@@ -252,14 +274,25 @@ def main():
         #GravityRegression(func="exponential", gaussian_bandwidth=2),
     ]
 
-    #run(estimators1, iterations=1)
+    most_interesting = [
+        GravityRegression(func="exponential", gaussian_bandwidth=4),
+        GravityRegression(func="homographic", gaussian_bandwidth=2),
+        NNInterpolation(),
+        LinearInterpolation(),
+        MLPRegressor(hidden_layer_sizes=(100, 100, 100),
+                     max_iter=1000, activation='tanh',
+                     solver='lbfgs', random_state=5)
+    ]
+
+    #learning_curves(trees, iterations=1)
+    run(gravity, iterations=1)
     #run(gravity, iterations=1)
     #run(mlp, iterations=1)
     #stream(g, locations_count=4)
     #stream(g, locations_count=4)
     #runMPL(mlp, train_sizes = np.linspace(0.1, 1.0, 25))
 
-    test_then_train(estimators2)
+    #test_then_train(estimators2)
 
 if __name__ == '__main__':
     # execute only if run as the entry point into the program

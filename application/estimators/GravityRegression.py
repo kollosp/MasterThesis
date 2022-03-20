@@ -1,8 +1,9 @@
 import numpy as np
 import random
 from math import sqrt, exp, pi
+from sklearn.base import BaseEstimator
 
-class GravityRegression:
+class GravityRegression(BaseEstimator):
     def __init__(self, bandwidth=None, func="exponential", gaussian_bandwidth=4):
         self.data_set = None
         self.data_values = None

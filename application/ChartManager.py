@@ -4,6 +4,7 @@ import numpy as np
 import math
 import sys
 import datetime
+from scipy import stats
 from sklearn.preprocessing import normalize
 
 class ChartManager:
@@ -149,6 +150,7 @@ class ChartManager:
         #solar_intensity = np.array([solar_intensity]).T
         #solar_intensity = np.hstack([solar_intensity,solar_intensity,solar_intensity])
 
+        print("solar_intensity",solar_intensity)
         ax[0,2].scatter(points[:, 1], points[:, 0],c=solar_intensity)
 
         #define density of models check points
@@ -267,3 +269,58 @@ class ChartManager:
 
     def pause(self, delay):
         plt.pause(delay)
+
+    @staticmethod
+    def density_plot(plot, data):
+        pass
+
+    @staticmethod
+    def density_plot_2d(plot, data, grid_size, min_x=0, max_x=1, min_y=0, max_y=1):
+        xf = (1 / (grid_size[0] - 1))
+        yf = (1 / (grid_size[1] - 1))
+        mesh_x, mesh_y = np.mgrid[min_x:max_x+xf:xf, min_y:max_y+yf:yf]
+        grid_points = np.vstack([mesh_x.ravel(), mesh_y.ravel()])
+        grid_points_t = grid_points.T
+        kernel = stats.gaussian_kde(data.T)
+        gaussian_density = np.reshape(kernel(grid_points).T, mesh_x.shape)
+        plot.imshow(np.rot90(gaussian_density), cmap=plt.cm.gist_earth_r,
+                  extent=[0, 1, 0, 1])
+        plot.set_xlim([min_x, max_x])
+        plot.set_ylim([min_y, max_y])
+
+    @staticmethod
+    def scatter_plot(plot, points, values = None, en_norm=True):
+        #print(points[:, 0], points[:, 1], values)
+        if values is None:
+            plot.scatter(points[:, 0], points[:, 1], 'k.', markersize=2)
+        else:
+            if en_norm is True:
+                plot.scatter(points[:, 0], points[:, 1], c=values, vmin=0, vmax=1, cmap="inferno")
+            else:
+                plot.scatter(points[:, 0], points[:, 1], c=values, cmap="inferno")
+
+    @staticmethod
+    def mesh_plot(plot, estimator, grid_size, min_x=0, max_x=1, min_y=0, max_y=1, en_norm=True):
+        xf = (1 / (grid_size[0] - 1))
+        yf = (1 / (grid_size[1] - 1))
+        mesh_x, mesh_y = np.mgrid[min_x:max_x+xf:xf, min_y:max_y+yf:yf]
+        grid_points = np.vstack([mesh_x.ravel(), mesh_y.ravel()])
+        grid_points_t = grid_points.T
+        predictions = estimator.predict(grid_points_t)
+        if en_norm is True:
+            plot.pcolormesh(mesh_x, mesh_y, predictions.reshape(grid_size), vmin=0, vmax=1, shading='auto', alpha=0.7, cmap="inferno")
+        else:
+            plot.pcolormesh(mesh_x, mesh_y, predictions.reshape(grid_size), shading='auto', alpha=0.7, cmap="inferno")
+
+        plot.set_xlim([min_x, max_x])
+        plot.set_ylim([min_y, max_y])
+
+    @staticmethod
+    def mesh_points_plot(plot, estimator, grid_size, min_x=0, max_x=1, min_y=0, max_y=1, en_norm=True):
+        xf = (1 / (grid_size[0] - 1))
+        yf = (1 / (grid_size[1] - 1))
+        mesh_x, mesh_y = np.mgrid[min_x:max_x+xf:xf, min_y:max_y+yf:yf]
+        grid_points = np.vstack([mesh_x.ravel(), mesh_y.ravel()])
+        grid_points_t = grid_points.T
+        predictions = estimator.predict(grid_points_t)
+        ChartManager.scatter_plot(plot, grid_points_t,predictions, en_norm=en_norm)
