@@ -1,0 +1,5 @@
+folder zawiera wykresy z pomiarow MPL:
+
+
+
+z modyfikowanym zbiorem atrybutow.

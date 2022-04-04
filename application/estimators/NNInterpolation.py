@@ -8,7 +8,7 @@ class NNInterpolation:
     def fit(self, X, y, sample_weight=None):
         #calc distance matrix
         self.f = interpolate.NearestNDInterpolator(X, y)
-        return
+        return self
 
     def predict(self,X):
         return np.array([self.f(X[i,0], X[i,1]) for i in range(len(X))])
@@ -17,4 +17,7 @@ class NNInterpolation:
         return "Nearest neighbour"
 
     def get_params(self, deep=True):
+        return {}
+
+    def set_params(self):
         return {}

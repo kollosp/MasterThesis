@@ -67,7 +67,7 @@ class PyTorchMLP():
             self.test(y)
 
         print("Done!")
-        return
+        return self
 
     def predict(self, X):
         return np.array([random.uniform(0,1) for x in range(len(X))])

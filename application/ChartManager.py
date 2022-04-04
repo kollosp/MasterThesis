@@ -68,7 +68,7 @@ class ChartManager:
               math.floor(shape[1] * x_min): math.floor(shape[1] * x_max),
         ]
 
-        #print(y_min, y_max,x_min, x_max, self.extent)
+        self.figures = []
 
     def plot_input_data_distribution(self, data):
         col_count = 5
@@ -270,6 +270,37 @@ class ChartManager:
     def pause(self, delay):
         plt.pause(delay)
 
+    def create_figure(self, subplots = (1,1), title=None):
+
+        #check if figure has not been created before
+        if title is not None:
+            for i, fig in enumerate(self.figures):
+                if fig["title"] == title:
+                    #yes, it has been created. Then return it
+                    return fig["fig"],fig["ax"],i
+
+        # create new figure with subplots
+        fig, ax = plt.subplots(subplots[0], subplots[1])
+        if title is not None:
+            fig.suptitle(title, fontsize=16)
+
+        self.figures.append({
+            "fig":fig,
+            "ax":ax,
+            "title": title
+        })
+        return fig, ax, len(self.figures)-1
+
+    @staticmethod
+    def show_figures(i=None):
+        #if i is not None:
+        #    self.figures[i].show()
+        #else:
+        #    for i, _ in enumerate(self.figures):
+        #        self.figures[i].show()
+        plt.show()
+
+
     @staticmethod
     def density_plot(plot, data):
         pass
@@ -283,8 +314,10 @@ class ChartManager:
         grid_points_t = grid_points.T
         kernel = stats.gaussian_kde(data.T)
         gaussian_density = np.reshape(kernel(grid_points).T, mesh_x.shape)
-        plot.imshow(np.rot90(gaussian_density), cmap=plt.cm.gist_earth_r,
-                  extent=[0, 1, 0, 1])
+        #plot.imshow(np.rot90(gaussian_density), cmap=plt.cm.gist_earth_r,
+        #          extent=[0, 1, 0, 1])
+        plot.pcolormesh(mesh_y, mesh_x, gaussian_density, shading='auto', alpha=0.7,
+                        cmap="inferno")
         plot.set_xlim([min_x, max_x])
         plot.set_ylim([min_y, max_y])
 
@@ -292,15 +325,17 @@ class ChartManager:
     def scatter_plot(plot, points, values = None, en_norm=True):
         #print(points[:, 0], points[:, 1], values)
         if values is None:
-            plot.scatter(points[:, 0], points[:, 1], 'k.', markersize=2)
+            plot.scatter(points[:, 1], points[:, 0], s=1)
         else:
             if en_norm is True:
-                plot.scatter(points[:, 0], points[:, 1], c=values, vmin=0, vmax=1, cmap="inferno")
+                plot.scatter(points[:, 1], points[:, 0], c=values, vmin=0, vmax=1, cmap="inferno")
             else:
-                plot.scatter(points[:, 0], points[:, 1], c=values, cmap="inferno")
+                plot.scatter(points[:, 1], points[:, 0], c=values, s=1)
 
     @staticmethod
-    def mesh_plot(plot, estimator, grid_size, min_x=0, max_x=1, min_y=0, max_y=1, en_norm=True):
+    def mesh_plot(plot, estimator, grid_size, min_x=0, max_x=1, min_y=0, max_y=1, en_norm=True, en_stats = True):
+        delta_x = max_x - min_x
+        delta_y = max_y - min_y
         xf = (1 / (grid_size[0] - 1))
         yf = (1 / (grid_size[1] - 1))
         mesh_x, mesh_y = np.mgrid[min_x:max_x+xf:xf, min_y:max_y+yf:yf]
@@ -308,19 +343,95 @@ class ChartManager:
         grid_points_t = grid_points.T
         predictions = estimator.predict(grid_points_t)
         if en_norm is True:
-            plot.pcolormesh(mesh_x, mesh_y, predictions.reshape(grid_size), vmin=0, vmax=1, shading='auto', alpha=0.7, cmap="inferno")
+            plot.pcolormesh(mesh_y, mesh_x, predictions.reshape(grid_size), vmin=0, vmax=1, shading='auto', alpha=0.7, cmap="inferno")
         else:
-            plot.pcolormesh(mesh_x, mesh_y, predictions.reshape(grid_size), shading='auto', alpha=0.7, cmap="inferno")
+            plot.pcolormesh(mesh_y, mesh_x, predictions.reshape(grid_size), shading='auto', alpha=0.7, cmap="inferno")
+
+        if en_stats is True:
+            plot.text(max_x - 0.20 * delta_x, max_y - 0.05 * delta_y,
+                                                   ("%.3f" % np.max(predictions)).lstrip("0"))
+            plot.text(max_x - 0.20 * delta_x, max_y - 0.10 * delta_y,
+                                                   ("%.3f" % np.min(predictions)).lstrip("0"))
 
         plot.set_xlim([min_x, max_x])
         plot.set_ylim([min_y, max_y])
 
     @staticmethod
-    def mesh_points_plot(plot, estimator, grid_size, min_x=0, max_x=1, min_y=0, max_y=1, en_norm=True):
+    def text_plot(plot, texts, min_x=0, max_x=1, min_y=0, max_y=1, i_bias=3):
+        delta_x = max_x - min_x
+        delta_y = max_y - min_y
+        for i, text in enumerate(texts):
+            plot.text(0, max_y - (0.1*(i+i_bias)) * delta_y,text)
+
+    @staticmethod
+    def mesh_points_plot(plot, estimator, grid_size, min_x=0, max_x=1, min_y=0, max_y=1, en_norm=True, en_stats=True):
+        delta_x = max_x - min_x
+        delta_y = max_y - min_y
+
         xf = (1 / (grid_size[0] - 1))
         yf = (1 / (grid_size[1] - 1))
         mesh_x, mesh_y = np.mgrid[min_x:max_x+xf:xf, min_y:max_y+yf:yf]
         grid_points = np.vstack([mesh_x.ravel(), mesh_y.ravel()])
         grid_points_t = grid_points.T
         predictions = estimator.predict(grid_points_t)
+        if en_stats is True:
+            plot.text(max_x - 0.20 * delta_x, max_y - 0.05 * delta_y,
+                      ("%.3f" % np.max(predictions)).lstrip("0"))
+            plot.text(max_x - 0.20 * delta_x, max_y - 0.10 * delta_y,
+                      ("%.3f" % np.min(predictions)).lstrip("0"))
+
         ChartManager.scatter_plot(plot, grid_points_t,predictions, en_norm=en_norm)
+
+    @staticmethod
+    def plot_description(plot, title=None, x_label=None, y_label=None, en_coordinates=False):
+        if title is not None:
+            plot.title.set_text(title)
+        if en_coordinates is True:
+            plot.set_xlabel("Normalized latitude")
+            plot.set_ylabel("Normalized longitude")
+        if x_label is not None:
+            plot.set_xlabel(x_label)
+        if y_label is not None:
+            plot.set_ylabel(y_label)
+
+    @staticmethod
+    def plot_line(plot, X,Y):
+        plot.plot(X, Y, "o-", color="b")
+
+    @staticmethod
+    def plot_learning_curve(plot, estimator, train_scores_means, test_scores_means, train_sizes, fit_scores_means, fit_scores_std, train_scores_std=None, test_scores_std=None):
+        # Plot learning curve
+
+        plot.grid()
+
+        plot.plot(train_sizes, fit_scores_means, "o-", color="b", label="Normalized training score")
+        if fit_scores_std is not None:
+            plot.fill_between(
+            train_sizes,
+            fit_scores_means - fit_scores_std,
+            fit_scores_means + fit_scores_std,
+            alpha=0.1,
+            color="b")
+
+        plot.plot(train_sizes, train_scores_means, "o-", color="r", label="Training score")
+
+        if train_scores_std is not None:
+            plot.fill_between(
+            train_sizes,
+            train_scores_means - train_scores_std,
+            train_scores_means + train_scores_std,
+            alpha=0.1,
+            color="r")
+
+        plot.plot(train_sizes, test_scores_means, "o-", color="g", label="Cross-validation score")
+
+        if test_scores_std is not None:
+            plot.fill_between(
+            train_sizes,
+            test_scores_means - test_scores_std,
+            test_scores_means + test_scores_std,
+            alpha=0.1,
+            color="g")
+
+        #plot.set_ylim(top=1, bottom=-10)
+        ChartManager.plot_description(plot, str(estimator), "[%] of available dataset", "Mean metric score")

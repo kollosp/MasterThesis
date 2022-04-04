@@ -13,8 +13,11 @@ from sklearn.ensemble import RandomForestRegressor
 from sklearn.tree import DecisionTreeRegressor
 from sklearn.neural_network import MLPRegressor
 from sklearn.neighbors import KernelDensity
+from estimators.BaggingRegression import BaggingRegression
 from sklearn.ensemble import BaggingRegressor
 from Normalization import Normalization
+from estimators.KMeansInterpolation import KMeansInterpolation
+from Filtering import Filtering
 from sklearn.naive_bayes import GaussianNB
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import PolynomialFeatures
@@ -36,18 +39,17 @@ wroclaw =       (16.831,17.4,51,51.2,"wroclaw_map.png",16.831,17.4,51,51.2)
 cover_monitors =(14,19.5,49,54,"pl_map_2.png",14,   24.132,48.9,55)
 
 #select the range of area under consideration
-selected_range = lower_silesia
+selected_range = wroclaw
 
 # load data
-headers, location, data = FileLoader().load_from_csv("./data/07-10Dane.csv")
+#headers, location, data = FileLoader().load_from_csv("./data/07-10Dane.csv")
+headers, location, data = FileLoader().load_from_csv("./data/03-03Dane.csv")
 
 west, east, south, north, path, img_west, img_east, img_south, img_north = selected_range
 #cm = ChartManager(west=west, east=east, south=south, north=north, path=path, img_west=img_west, img_east=img_east,
 #                  img_south=img_south, img_north=img_north)
 cm = ChartManager(west=0, east=1, south=0, north=1, path=path, img_west=0, img_east=1,
                   img_south=0, img_north=1)
-
-
 
 def stream(estimators, locations_count):
     locations = location[locations_count:]
@@ -75,20 +77,28 @@ def stream(estimators, locations_count):
 
     #plot sub step
 
-def run(estimators, iterations=1):
+def run(estimators):
     chart_verbose = False
-    norm_location, norm_data = Normalization.filtering(location, data[1:, 2080], west=west, east=east, south=south, north=north)
-    norm_location, norm_data = Normalization.normalize(norm_location, norm_data, (40,40), chart_manager=ChartManager)
+    ref_location, ref_data = location, data[1:, 2080]
+    norm_location, norm_data = np.array(location), np.array(data[1:, 2080])
+    # Filtering data
+    filtering = None
+    filtering = Filtering(west=west, east=east, south=south, north=north, chart_manager=cm)
 
-    n_splits = 5
-    #results = Processing().process(location, data[1:, 2080], estimators, n_splits=n_splits)
-    results = Processing().process(norm_location, norm_data, estimators, n_splits=n_splits, chart_verbose=chart_verbose)
+    # Normalization. In future enable bagging to remove incorrect data affect
+    normalization = None
+    #normalization = Normalization((15,15),interpolator=BaggingRegression(base_estimator=KMeansInterpolation(), n_estimators=10),chart_manager=None)
+
+    # Processing - std cross validation
+    results = Processing.process(location, data[1:, 2080], estimators,
+                                 filtering=filtering, normalization=normalization, n_splits=5, chart_manager=cm)
+
+    # Evaluation - compare fitted estimators with row location and data (before normalization)
+
+    # Statistical results analysis (t-student's test)
 
     #[0] -> because only one dataset
     res_stats = Postprocessing().stats(np.array([results]))[0]
-
-    for estimator in estimators:
-        estimator.fit(norm_location,norm_data)
 
     print("==== Results ====")
     np.set_printoptions(suppress=True, precision=3)
@@ -98,35 +108,66 @@ def run(estimators, iterations=1):
     print("==== Results analysis ====")
     print(Postprocessing().process(results))
 
+    if filtering is not None:
+        filtering.set_chart_manager(cm)
+        norm_location, norm_data = filtering.apply(norm_location, norm_data)
+        ref_location, ref_data = filtering.apply(ref_location, ref_data)
+    if normalization is not None:
+        normalization.set_chart_manager(cm)
+        norm_location, norm_data = normalization.apply(norm_location, norm_data)
+        ref_location = normalization.apply(ref_location)
+    for estimator in estimators:
+        estimator.fit(norm_location,norm_data)
+    #cm.plot(ref_location, solar_intensity=ref_data, estimators=estimators, res_stats=res_stats, n_splits=5, adaptive_colors=True)
 
-    cm.plot(norm_location, solar_intensity=norm_data, estimators=estimators, res_stats=res_stats, n_splits=n_splits, adaptive_colors=True)
+    cm.show_figures()
     cm.show_plots()
 
-def learning_curves(estimators, iterations=1, train_sizes= np.linspace(0.1, 1.0, 10)):
+def learning_curves(estimators, train_sizes= np.linspace(0.4, 1, 10)):
 
-    for i in range(iterations):
-        processed_data_piece = data[1:,2080 + i*20]
-        n_splits = 5
+    #index = 2080 + 2*20
+    index = 60
 
-        train_scores_means = np.zeros([len(estimators), len(train_sizes)])
-        test_scores_means = np.zeros([len(estimators), len(train_sizes)])
+    filtered_data = data[1:,index]
+    last_data = data[1:,index-2:index]
+    filtering = Filtering(west=west, east=east, south=south, north=north, chart_manager=cm)
+    filtered_location, filtered_data = filtering.apply(location, filtered_data)
 
-        for j in range(len(estimators)):
+    normalization = None
+    normalization = Normalization((20,20),interpolator=BaggingRegression(base_estimator=LinearInterpolation(), n_estimators=25),chart_manager=None)
+    #norm_location, norm_data = normalization.apply(location, norm_data)
+    n_splits = 5
 
-            train_scores_mean, train_scores_std, test_scores_mean, test_scores_std, fit_times_mean, fit_times_std = \
-                Processing().processMLP(location, processed_data_piece, estimators[j], train_sizes=train_sizes, n_splits=n_splits)
-            train_scores_means[j] = train_scores_mean
-            test_scores_means[j] = test_scores_mean
+    fig, ax, _ = cm.create_figure((1, len(estimators)), "Learning curves")
 
-        cm.plot_learning_curve(estimators, train_scores_means, test_scores_means, train_sizes)
-        cm.pause(0.05)
+    train_scores_mean, train_scores_std, test_scores_mean, test_scores_std, fit_scores, fit_scores_std = Processing().learning_curve(
+        filtered_location, filtered_data, estimators,
+        y_his=last_data,
+        verbose=False,
+        normalization=normalization,
+        chart_manager=cm,
+        x_extension=XExtension(),
+        train_sizes=train_sizes, n_splits=n_splits)
 
-        #cm.plot(location, solar_intensity=processed_data_piece, estimators=estimators, res_stats=res_stats, n_splits=n_splits, adaptive_colors=True)
-        #cm.plot_input_data_distribution(np.array([
-        #    (data[0, i], data[1:, i]) for i in range(2000,2200) if i%10==0
-        #],dtype=object))
+    for j, estimator in enumerate(estimators):
+        print("plot learning curves for ", str(estimator))
+        #train_scores_mean, train_scores_std, test_scores_mean, test_scores_std, fit_times_mean, fit_times_std = \
+        #    Processing().learning_curve(norm_location, norm_data, estimators[j], train_sizes=train_sizes, n_splits=n_splits)
+        print(train_scores_mean, train_scores_std, test_scores_mean, test_scores_std)
+        if len(estimators) == 1:
+            cm.plot_learning_curve(ax, estimator, train_scores_mean[j], test_scores_mean[j], train_sizes, fit_scores[j], fit_scores_std[j],
+                                   train_scores_std=train_scores_std[j], test_scores_std=test_scores_std[j])
+        else:
+            cm.plot_learning_curve(ax[j], estimator, train_scores_mean, test_scores_mean, train_sizes, fit_scores[j], fit_scores_std[j],
+                                   train_scores_std=train_scores_std[j], test_scores_std=test_scores_std[j])
 
-    cm.show_plots()
+    cm.show_figures()
+
+
+    #cm.plot(location, solar_intensity=processed_data_piece, estimators=estimators, res_stats=res_stats, n_splits=n_splits, adaptive_colors=True)
+    #cm.plot_input_data_distribution(np.array([
+    #    (data[0, i], data[1:, i]) for i in range(2000,2200) if i%10==0
+    #],dtype=object))
 
 #start = 2040, start = 180
 def test_then_train(estimators, estimator_count=0, chunks=300, step=1, chunk_size=3, start = 1050, en_weights=False):
@@ -246,16 +287,28 @@ def main():
         DecisionTreeRegressor(random_state=0),
     ]
 
+    max_iter = 4000
     mlp = [
         # MLP
-        #MLPRegressor(hidden_layer_sizes=(20, 20, 20),
-        #             max_iter=1000, activation='tanh',
-        #             solver='lbfgs', random_state=5),
-        # MLP
-        MLPRegressor(hidden_layer_sizes=(10,10),
-                     max_iter=3000, activation='logistic',
-                     solver='lbfgs', random_state=5),
-        PytorchRegressor(output_dim=1, input_dim=2, num_epochs=3000, hidden_layer_dims=[10, 10], verbose=0),
+        # for 1 history element
+        #MLPRegressor(hidden_layer_sizes=(15,10,2),
+        #             max_iter=max_iter,solver='lbfgs', random_state=5,
+        #             verbose=False),
+
+        # for 2 history element
+        #MLPRegressor(hidden_layer_sizes=(20, 15, 15, 15),
+        #             max_iter=max_iter, solver='lbfgs',
+        #             activation="relu",
+        #             random_state=5,
+        #             verbose=False),
+        # for 2 history element
+        MLPRegressor(hidden_layer_sizes=(50,100,25),
+                     max_iter=max_iter,
+                     #solver='lbfgs',
+                     #activation="relu",
+                     random_state=5,
+                     verbose=False),
+        #GravityRegression(func="homographic", gaussian_bandwidth=2),
 
         #MLPRegressor(hidden_layer_sizes=(20,20,20),
         #             max_iter=3000, activation='tanh',
@@ -284,8 +337,8 @@ def main():
                      solver='lbfgs', random_state=5)
     ]
 
-    #learning_curves(trees, iterations=1)
-    run(gravity, iterations=1)
+    learning_curves(mlp)
+    #run(estimators1)
     #run(gravity, iterations=1)
     #run(mlp, iterations=1)
     #stream(g, locations_count=4)

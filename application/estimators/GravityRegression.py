@@ -32,7 +32,7 @@ class GravityRegression(BaseEstimator):
         #normalisation
         self.sum = np.sum(y)
         self.count = y.shape[0]
-        return
+        return self
 
     def predict(self, X):
         #for each point

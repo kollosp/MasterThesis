@@ -6,7 +6,7 @@ class OnesRegression:
         return
 
     def fit(self, X,y, sample_weight=None):
-        return
+        return self
 
     def predict(self, X):
         return np.ones(len(X))

@@ -6,7 +6,7 @@ class ZeroRegression:
         return
 
     def fit(self, X,y, sample_weight=None):
-        return
+        return self
 
     def predict(self, X):
         return np.zeros(len(X))

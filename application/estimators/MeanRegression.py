@@ -7,7 +7,7 @@ class MeanRegression:
 
     def fit(self, X,y, sample_weight=None):
         self.y = y
-        return
+        return self
 
     def predict(self, X):
         d = np.ones(len(X))
