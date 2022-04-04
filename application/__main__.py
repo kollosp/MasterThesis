@@ -39,7 +39,7 @@ wroclaw =       (16.831,17.4,51,51.2,"wroclaw_map.png",16.831,17.4,51,51.2)
 cover_monitors =(14,19.5,49,54,"pl_map_2.png",14,   24.132,48.9,55)
 
 #select the range of area under consideration
-selected_range = wroclaw
+selected_range = lower_silesia
 
 # load data
 #headers, location, data = FileLoader().load_from_csv("./data/07-10Dane.csv")
@@ -126,15 +126,15 @@ def run(estimators):
 def learning_curves(estimators, train_sizes= np.linspace(0.4, 1, 10)):
 
     #index = 2080 + 2*20
-    index = 60
+    index = 63
 
     filtered_data = data[1:,index]
-    last_data = data[1:,index-2:index]
+    last_data = data[1:,index-1:index]
     filtering = Filtering(west=west, east=east, south=south, north=north, chart_manager=cm)
     filtered_location, filtered_data = filtering.apply(location, filtered_data)
 
     normalization = None
-    normalization = Normalization((20,20),interpolator=BaggingRegression(base_estimator=LinearInterpolation(), n_estimators=25),chart_manager=None)
+    normalization = Normalization((20,20),interpolator=BaggingRegression(base_estimator=LinearInterpolation(), n_estimators=3),chart_manager=None)
     #norm_location, norm_data = normalization.apply(location, norm_data)
     n_splits = 5
 
@@ -146,7 +146,7 @@ def learning_curves(estimators, train_sizes= np.linspace(0.4, 1, 10)):
         verbose=False,
         normalization=normalization,
         chart_manager=cm,
-        x_extension=XExtension(),
+        #x_extension=XExtension(),
         train_sizes=train_sizes, n_splits=n_splits)
 
     for j, estimator in enumerate(estimators):
@@ -158,7 +158,7 @@ def learning_curves(estimators, train_sizes= np.linspace(0.4, 1, 10)):
             cm.plot_learning_curve(ax, estimator, train_scores_mean[j], test_scores_mean[j], train_sizes, fit_scores[j], fit_scores_std[j],
                                    train_scores_std=train_scores_std[j], test_scores_std=test_scores_std[j])
         else:
-            cm.plot_learning_curve(ax[j], estimator, train_scores_mean, test_scores_mean, train_sizes, fit_scores[j], fit_scores_std[j],
+            cm.plot_learning_curve(ax[j], estimator, train_scores_mean[j], test_scores_mean[j], train_sizes, fit_scores[j], fit_scores_std[j],
                                    train_scores_std=train_scores_std[j], test_scores_std=test_scores_std[j])
 
     cm.show_figures()
@@ -291,10 +291,7 @@ def main():
     mlp = [
         # MLP
         # for 1 history element
-        #MLPRegressor(hidden_layer_sizes=(15,10,2),
-        #             max_iter=max_iter,solver='lbfgs', random_state=5,
-        #             verbose=False),
-
+        #MeanRegression(),
         # for 2 history element
         #MLPRegressor(hidden_layer_sizes=(20, 15, 15, 15),
         #             max_iter=max_iter, solver='lbfgs',
@@ -302,8 +299,13 @@ def main():
         #             random_state=5,
         #             verbose=False),
         # for 2 history element
-        MLPRegressor(hidden_layer_sizes=(50,100,25),
-                     max_iter=max_iter,
+        MLPRegressor(hidden_layer_sizes=(25,25,25,25),
+                     #solver='lbfgs',
+                     #activation="relu",
+                     random_state=5,
+                     verbose=False),
+        #MLPRegressor(hidden_layer_sizes=(50,100,25),
+        MLPRegressor(hidden_layer_sizes=(100,100,100,100),
                      #solver='lbfgs',
                      #activation="relu",
                      random_state=5,

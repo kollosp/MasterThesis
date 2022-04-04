@@ -151,7 +151,11 @@ class Processing:
                     # making grid instead of samples
                     x_train_no_normalization = normalization.apply(x_train_no_normalization)
 
-                    x_train, y_train = normalization.apply(x_train, y_train)
+                    x_train_ext, y_train_ext = normalization.apply(x_train, y_train)
+                    x_train = normalization.apply(x_train)
+                    x_train = np.append(x_train, x_train_ext,axis=0)
+                    y_train = np.append(y_train, y_train_ext,axis=0)
+                    #x_train = normalization.apply(x_train)
                     # normalization only on x = rescaling x into 0..1 range
                     x_test = normalization.apply(x_test)
 
@@ -159,6 +163,7 @@ class Processing:
                         print("\tNormalization: Learning set size: ", x_train.shape[0])
 
                 if chart_manager is not None:
+                    chart_manager.scatter_plot(ax[loop_counter-1,i], x_train, 'b')
                     chart_manager.scatter_plot(ax[loop_counter-1,i], x_test, 'r')
                     chart_manager.scatter_plot(ax[loop_counter-1,i], x_train_no_normalization, 'g')
 

@@ -2,7 +2,7 @@ import numpy as np
 
 class XExtension:
     def __init__(self, method='direct'):
-        method = 'derivative'
+        method = 'mean'
         self.method = method
         pass
 

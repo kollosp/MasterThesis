@@ -433,5 +433,5 @@ class ChartManager:
             alpha=0.1,
             color="g")
 
-        #plot.set_ylim(top=1, bottom=-10)
+        plot.set_ylim(top=0.3, bottom=0)
         ChartManager.plot_description(plot, str(estimator), "[%] of available dataset", "Mean metric score")
